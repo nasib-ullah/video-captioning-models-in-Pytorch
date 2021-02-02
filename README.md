@@ -22,7 +22,25 @@ This repository contains Pytorch implementation of video captioning SOTA models 
     * Pytorch 1.7.0
     * Other Python libraries specified in requirements.txt
 
+## Quantitative Results
 
+*MSVD
+ | Model | Pretrained model | BLEU4 | METEOR | CIDER | ROUGE_L | Pretrained |
+ | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+ | Mean Pooling | DenseNet | - | - | - | - | - |
+ | Mean Pooling | Inceptionv4 | - | - | - | - | - |
+ | SA-LSTM | Inceptionv4 | - | - | - | - | - |
+ | S2VT | Inceptionv4 | - | - | - | - | - |
+ | RecNet (global ) | Inception | - | - | - | - | - |
+ 
+ *MSRVTT
+ 
+ | Model | Pretrained model | BLEU4 | METEOR | CIDER | ROUGE_L | Pretrained |
+ | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+ | Mean Pooling | Inceptionv4 | - | - | - | - | - |
+ | SA-LSTM | Inceptionv4 | - | - | - | - | - |
+ | S2VT | Inceptionv4 | - | - | - | - | - |
+ | RecNet (global ) | Inception | - | - | - | - | - |
 
 # References
 
