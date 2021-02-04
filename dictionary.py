@@ -94,9 +94,9 @@ class Vocabulary:
         ))
 
         # Reinitialize dictionaries
-        self.word2index = {"PAD":PAD_token,"EOS":EOS_token,"SOS":SOS_token}
+        self.word2index = {"PAD":self.cfg.PAD_token,"EOS":self.cfg.EOS_token,"SOS":self.cfg.SOS_token, "UNK":self.cfg.UNK_token}
         #self.word2count = {}
-        self.index2word = {PAD_token:"PAD",EOS_token:"EOS",SOS_token:"SOS"}
+        self.index2word = {self.cfg.PAD_token:"PAD",self.cfg.EOS_token:"EOS",self.cfg.SOS_token:"SOS", self.cfg.UNK_token:"UNK"}
         self.num_words = 3
 
         for word in keep_words:
