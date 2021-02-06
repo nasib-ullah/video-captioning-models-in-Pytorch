@@ -5,9 +5,9 @@ This repository contains Pytorch implementation of video captioning SOTA models 
  | :---: | :---: | :---: | :---: | 
  | Mean Pooling | MSVD, MSRVTT | Translating videos to natural language using deep recurrent neural networks[[1]](#1) | 2015 | 
  | S2VT | MSVD, MSRVTT | Sequence to Sequence - Video to Text[[2]](#2) | 2015 |
- | SA-LSTM | MSVD, MSRVTT | - | 2016 |
- | Recnet | MSVD, MSRVTT |  Reconstruction Network for Video Captioning[[3]](#3)  | 2018 |
- | MARN | MSVD, MSRVTT | Memory-Attended Recurrent Network for Video Captioning[[4]](#4) | 2019 |
+ | SA-LSTM | MSVD, MSRVTT | Describing videos by exploiting temporal structure[[3]](#3) | 2015 |
+ | Recnet | MSVD, MSRVTT |  Reconstruction Network for Video Captioning[[4]](#4)  | 2018 |
+ | MARN | MSVD, MSRVTT | Memory-Attended Recurrent Network for Video Captioning[[5]](#5) | 2019 |
  
  *More recent models will be added in future
 
@@ -63,7 +63,7 @@ Follow the demo given in `video_captioning.ipynb`.
  | Model | Pretrained model | BLEU4 | METEOR | CIDER | ROUGE_L | Pretrained |
  | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
  | Mean Pooling | DenseNet | - | - | - | - | - |
- | Mean Pooling | Inceptionv4 | - | - | - | - | - |
+ | Mean Pooling | Inceptionv4 | 42.2 | 31.6 | 69.7 | 68.2 | [link](https://drive.google.com/file/d/1Oj5yMIKnU5obe0UXTknvX9S70CFVH7nz/view?usp=sharing) |
  | SA-LSTM | Inceptionv4 | - | - | - | - | - |
  | S2VT | Inceptionv4 | - | - | - | - | - |
  | RecNet (global ) | Inceptionv4 | - | - | - | - | - |
@@ -92,13 +92,17 @@ Subhashini Venugopalan, Marcus Rohrbach, Jeff Donahue, Raymond J. Mooney,
 Trevor Darrell and Kate Saenko. Sequence to Sequence - Video to Text. In Proceedings of the IEEE International Conference on Computer Vision (ICCV), 2015
 
 <a id = "3">[3]</a>
-Wang, Bairui, et al. "Reconstruction Network for Video Captioning." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018.
+Yao, Li, et al. "Describing videos by exploiting temporal structure." Proceedings of the IEEE international conference on computer vision. 2015.
+
 
 <a id = "4">[4]</a>
+Wang, Bairui, et al. "Reconstruction Network for Video Captioning." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018.
+
+<a id = "5">[5]</a>
 Wenjie Pei, Jiyuan Zhang, Xiangrong Wang, Lei Ke, Xiaoyong Shen, and Yu-Wing Tai. Memory-attended recurrent network for video captioning. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pages 8347–8356, 2019
 
 ## Acknowlegement
 
-I got some of the coding idea and the extracted video features from
+I got some of the coding ideas and the extracted video features from
 [hobincar/pytorch-video-feature-extractor](https://github.com/hobincar/pytorch-video-feature-extractor)
 Many thanks!
