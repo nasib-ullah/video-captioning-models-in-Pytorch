@@ -94,7 +94,6 @@ Trevor Darrell and Kate Saenko. Sequence to Sequence - Video to Text. In Proceed
 <a id = "3">[3]</a>
 Yao, Li, et al. "Describing videos by exploiting temporal structure." Proceedings of the IEEE international conference on computer vision. 2015.
 
-
 <a id = "4">[4]</a>
 Wang, Bairui, et al. "Reconstruction Network for Video Captioning." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018.
 
