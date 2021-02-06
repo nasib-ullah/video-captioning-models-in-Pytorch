@@ -62,7 +62,6 @@ Follow the demo given in `video_captioning.ipynb`.
 *MSVD
  | Model | Pretrained model | BLEU4 | METEOR | CIDER | ROUGE_L | Pretrained |
  | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
- | Mean Pooling | DenseNet | - | - | - | - | - |
  | Mean Pooling | Inceptionv4 | 42.2 | 31.6 | 69.7 | 68.2 | [link](https://drive.google.com/file/d/1Oj5yMIKnU5obe0UXTknvX9S70CFVH7nz/view?usp=sharing) |
  | SA-LSTM | Inceptionv4 | - | - | - | - | - |
  | S2VT | Inceptionv4 | - | - | - | - | - |
