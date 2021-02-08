@@ -31,7 +31,7 @@ class Encoder(nn.Module):
         Encoder module. Project the video feature into a different space which will be 
         send to decoder.
         Argumets:
-          input_size : CNN extracted feature size. For Densenet 1920
+          input_size : CNN extracted feature size. For Densenet 1920, For inceptionv4 1536
           output_size : Dimention of projected space.
         '''
         self.layer = nn.Linear(cfg.input_size,cfg.videofeat_size)
@@ -160,9 +160,9 @@ class MeanPooling(nn.Module):
         
         Args:
         Inputs:
-            input_variable : image mini-batch tensor; size = (B,C,W,H)
-            target_variable : Ground Truth Captions;  size = (T,B); T will be different for different mini-batches
-            mask : Masked tensor for Ground Truth;    size = (T,C)
+            input_variable : mini-batch tensor; size = (B,F); B - batch_size, F - feature dimension
+            target_variable : Ground Truth Captions;  size = (T,B); T - maximum seuence length for the mini batch, will be different for different mini-batches
+            mask : Masked tensor for Ground Truth;    size = (T,B)
             max_target_len : maximum lengh of the mini-batch; size = T
             use_teacher_forcing : binary variable. If True training uses teacher forcing else sampling.
             clip : clip the gradients to counter exploding gradient problem.
