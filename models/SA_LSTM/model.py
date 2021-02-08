@@ -30,8 +30,8 @@ class TemporalAttention(nn.Module):
     def __init__(self,cfg):
         super(TemporalAttention,self).__init__()
         '''
-        Spatial Attention module. It depends on previous hidden memory in the decoder(of shape hidden_size),
-        feature at the source side ( of shape(196,feat_size) ).  
+        Temporal Attention module. It depends on previous hidden memory in the decoder(of shape hidden_size),
+        feature at the source side ( of shape(num_of_frames,feat_size) ).  
         at(s) = align(ht,hs)
               = exp(score(ht,hs)) / Sum(exp(score(ht,hs')))  
         where
@@ -41,7 +41,7 @@ class TemporalAttention(nn.Module):
         Here we have used concat formulae.
         Argumets:
           hidden_size : hidden memory size of decoder.
-          feat_size : feature size of each grid (annotation vector) at encoder side.
+          feat_size : feature size of each frame (frame feature vector) at encoder side.
           bottleneck_size : intermediate size.
         '''
         self.hidden_size = cfg.hidden_size
@@ -202,9 +202,9 @@ class SALSTM(nn.Module):
         
         Args:
         Inputs:
-            input_variable : image mini-batch tensor; size = (B,C,W,H)
+            input_variable : mini-batch tensor; size = (B,N,F)  # B - batch_size, N - number of frames, F - feature size of each frame
             target_variable : Ground Truth Captions;  size = (T,B); T will be different for different mini-batches
-            mask : Masked tensor for Ground Truth;    size = (T,C)
+            mask : Masked tensor for Ground Truth;    size = (T,B)
             max_target_len : maximum lengh of the mini-batch; size = T
             use_teacher_forcing : binary variable. If True training uses teacher forcing else sampling.
             clip : clip the gradients to counter exploding gradient problem.
