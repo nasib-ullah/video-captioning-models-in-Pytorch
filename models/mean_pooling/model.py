@@ -253,4 +253,71 @@ class MeanPooling(nn.Module):
             caps_text.append(tmp)
         return caption,caps_text
         
-    
+    @torch.no_grad()
+    def BeamDecoding(self,features,beam_length=3, max_length=15,return_single=True):
+        '''
+        Beam decoding for Mean Pooling
+        Args:
+            Input :
+                features : Encoder output feature
+                beam_length : Beam length
+                max_length : maximum sentence length to generate
+                return_single : to select whether to return top-1 result or top-beam_length results
+             
+            Return:
+                final_captions : output tensor  # shape - (batch_size,beam_length,max_length) 
+                caps_text : text after EOS removed 
+                final_scores : Beam score # shape - (batch_size,beam_length)
+        
+        '''
+        batch_size = features.size()[0]
+        vfunc = np.vectorize(lambda t: self.voc.index2word[t]) # to transform tensors to words
+        rfunc = np.vectorize(lambda t: '' if t == 'EOS' else t)
+        
+        final_captions = torch.zeros(batch_size,beam_length,max_length)
+        final_scores = torch.tensor([[0]*beam_length for i in range(batch_size)])
+        encoder_output = self.encoder(features).unsqueeze_(0)
+        
+        decoder_input = torch.LongTensor([[self.cfg.SOS_token for _ in range(batch_size)]]).to(self.device)
+        decoder_hidden = encoder_output 
+        decoder_hidden = torch.cat(self.cfg.n_layers*[encoder_output])
+        decoder_input = torch.stack([decoder_input]*beam_length)
+        decoder_hidden = torch.stack([decoder_hidden]*beam_length)
+        if self.cfg.decoder_type == 'lstm':
+            decoder_hidden = (decoder_hidden,decoder_hidden)
+        for l in range(max_length):
+            #beam_output = torch.zeros(batch_size,beam_length*self.voc.num_words).to(self.device) # check properly
+            beam_output = []
+            for i in range(beam_length):
+                #split data along the beam dimension and concatenate results
+                if self.cfg.decoder_type == 'lstm':
+                    decoder_output, (decoder_hidden[0][i],decoder_hidden[1][i]) = self.decoder(decoder_input[i],
+                                                                 (decoder_hidden[0][i],decoder_hidden[1][i]))
+                else:
+                    decoder_output,decoder_hidden[i] = self.decoder(decoder_input[i],decoder_hidden[i])
+                    
+                beam_output.append(decoder_output.cpu().squeeze(0))
+                
+            beam_output = torch.stack(beam_output,1).view(batch_size,-1)
+            print(beam_output.size())
+            value,index = beam_output.topk(beam_length)
+            #Add this to final captions and final scores
+            final_scores = final_scores + (-1)* torch.log(value).cpu()
+            final_captions[:,:,l] = index % self.voc.num_words #index can be beam_length times vocabulary length
+            #set decoder input
+            decoder_input = index.unsqueeze_(1).permute(2,1,0).to(self.device)
+            print('di',decoder_input.size())
+            
+        caps_text = []
+        captions = vfunc(final_captions.cpu().numpy())
+        captions = rfunc(captions)
+        if return_single:
+            for eee in captions:
+                caps_text.append(' '.join(x for x in eee[2]))
+        else:
+            for eee in captions:
+                for jj in eee:
+                    caps_text.append(' '.join(x for x in jj))
+        
+        return final_captions,caps_text,final_scores
+            
