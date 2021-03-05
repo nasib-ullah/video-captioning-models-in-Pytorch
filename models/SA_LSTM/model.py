@@ -1,7 +1,6 @@
 '''
 Module :  SA-LSTM model
 Authors:  Nasibullah (nasibullah104@gmail.com)
-Beam decoding will be added in future
 '''
 
 
@@ -23,6 +22,7 @@ import itertools
 
 import numpy as np
 import os
+import copy
 
 
 
@@ -30,8 +30,8 @@ class TemporalAttention(nn.Module):
     def __init__(self,cfg):
         super(TemporalAttention,self).__init__()
         '''
-        Temporal Attention module. It depends on previous hidden memory in the decoder(of shape hidden_size),
-        feature at the source side ( of shape(num_of_frames,feat_size) ).  
+        Spatial Attention module. It depends on previous hidden memory in the decoder(of shape hidden_size),
+        feature at the source side ( of shape(196,feat_size) ).  
         at(s) = align(ht,hs)
               = exp(score(ht,hs)) / Sum(exp(score(ht,hs')))  
         where
@@ -41,7 +41,7 @@ class TemporalAttention(nn.Module):
         Here we have used concat formulae.
         Argumets:
           hidden_size : hidden memory size of decoder.
-          feat_size : feature size of each frame (frame feature vector) at encoder side.
+          feat_size : feature size of each grid (annotation vector) at encoder side.
           bottleneck_size : intermediate size.
         '''
         self.hidden_size = cfg.hidden_size
@@ -202,9 +202,9 @@ class SALSTM(nn.Module):
         
         Args:
         Inputs:
-            input_variable : mini-batch tensor; size = (B,N,F)  # B - batch_size, N - number of frames, F - feature size of each frame
+            input_variable : image mini-batch tensor; size = (B,C,W,H)
             target_variable : Ground Truth Captions;  size = (T,B); T will be different for different mini-batches
-            mask : Masked tensor for Ground Truth;    size = (T,B)
+            mask : Masked tensor for Ground Truth;    size = (T,C)
             max_target_len : maximum lengh of the mini-batch; size = T
             use_teacher_forcing : binary variable. If True training uses teacher forcing else sampling.
             clip : clip the gradients to counter exploding gradient problem.
@@ -294,4 +294,67 @@ class SALSTM(nn.Module):
             tmp = ' '.join(x for x in tmp)
             caps_text.append(tmp)
         return caption,caps_text, torch.stack(attention_values,0).cpu().numpy()
+    
+        
+    @torch.no_grad()
+    def BeamDecoding(self,features,beam_length=3, max_length=15,return_single=True):
+        '''
+        Beam decoding for Mean Pooling
+        '''
+        features = features.to(self.device)
+        batch_size = features.size()[0]
+        vfunc = np.vectorize(lambda t: self.voc.index2word[t]) # to transform tensors to words
+        rfunc = np.vectorize(lambda t: '' if t == 'EOS' else t) # to transform EOS to null string
+        
+        final_captions = torch.ones(beam_length,batch_size,max_length)
+        final_scores = torch.tensor([[0]*beam_length for i in range(batch_size)])
+        final_attn_scores = torch.zeros(beam_length,max_length,batch_size,self.cfg.attn_size)
+        #encoder_output = self.encoder(features).unsqueeze_(0) # shape (1,10,256)
+        
+        decoder_input = final_captions[:,:,0].unsqueeze_(1).long().to(self.device) #
+        decoder_hidden = torch.zeros(beam_length,self.cfg.n_layers, batch_size,
+                                      self.cfg.hidden_size).to(self.device)
+        if self.cfg.decoder_type == 'lstm':
+            decoder_hidden = (decoder_hidden,decoder_hidden)
+        for l in range(max_length):
+            beam_output = []
+            tmp_scores = copy.deepcopy(final_scores)
+            for i in range(beam_length):
+                #split data along the beam dimension and concatenate results
+                if self.cfg.decoder_type == 'lstm':
+                    decoder_output, (decoder_hidden[0][i],decoder_hidden[1][i]),attn_scores = self.decoder(decoder_input[i],
+                                                                (decoder_hidden[0][i],decoder_hidden[1][i]),features.float())
+                else:
+                    decoder_output,decoder_hidden[i],attn_scores = self.decoder(decoder_input[i],
+                                                                                         decoder_hidden[i],features.float())
+                    
+                # add log prob 
+                tmp = np.log(decoder_output.squeeze(0).cpu().numpy()) + tmp_scores[:,i].view(batch_size,1).cpu().numpy()
+                beam_output.append(tmp)
+                
+            beam_output = np.concatenate(beam_output,1) 
+            value,index = torch.tensor(beam_output).topk(beam_length)
+            final_scores = copy.deepcopy(value)
+            prefinal_caption = copy.deepcopy(final_captions)
+            for ii,ind in enumerate(index.permute(1,0),0): # need to loop over batches
+                for b in range(len(ind)):  
+                    kk = int(ind[b].item()/self.voc.num_words)
+                    prefinal_caption[ii,b,:(l+1)] = torch.cat([final_captions[kk,b,:l].view(-1),ind[b].float().view(-1)])
+                
+            final_captions = prefinal_caption
+            index = index % self.voc.num_words
+            decoder_input = index.unsqueeze_(1).permute(2,1,0).to(self.device) # shape
+        final_captions = final_captions % self.voc.num_words
+        caps_text = []
+        captions = vfunc(final_captions.cpu().numpy())
+        captions = rfunc(captions)
+        if return_single:
+            for eee in captions[0]:
+                caps_text.append(' '.join(x for x in eee).strip())
+        else:
+            for eee in captions:
+                for jj in eee:
+                    caps_text.append(' '.join(x for x in jj).strip())
+        
+        return final_captions,caps_text,final_scores
 
