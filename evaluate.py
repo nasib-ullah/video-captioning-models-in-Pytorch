@@ -11,8 +11,10 @@ import pickle
 
 class Evaluator:
     
-    def __init__(self,model,dataloader,path,cfg,reference_dict):
-        
+    def __init__(self,model,dataloader,path,cfg,reference_dict,decoding_type = 'greedy'):
+        '''
+        Decoding type : {'greedy','beam','semibeam'}
+        '''
         self.path = path
         self.cfg = cfg
         self.dataloader = dataloader
@@ -23,6 +25,7 @@ class Evaluator:
         self.losses = {}
         self.best_model = model
         self.meteor_sota = 0.34
+        self.decoding_type = decoding_type
 
     def prediction_list(self,model):
         self.prediction_dict = {}
@@ -33,9 +36,29 @@ class Evaluator:
             for data in self.dataloader:
                 features, targets, mask, max_length,ides= data
                 if self.cfg.model_name == 'mean_pooling':
-                    cap,cap_txt = model.GreedyDecoding(features.to(self.cfg.device))
+                    if self.decoding_type == 'greedy':
+                        cap,cap_txt = model.GreedyDecoding(features.to(self.cfg.device))
+                    elif self.decoding_type == 'beam':
+                        tensor,cap_txt,scores = model.BeamDecoding(features.to(self.cfg.device),return_single=True)
+                    else:
+                        cap_txt,result,scores = model.SemiBeamDecoding(features.to(self.cfg.device))
                 if self.cfg.model_name == 'sa-lstm':
-                    cap,cap_txt,_ = model.GreedyDecoding(features)
+                    if self.decoding_type == 'greedy':
+                        cap,cap_txt,_ = model.GreedyDecoding(features)
+                    else:
+                        cap,cap_txt,scoes = model.BeamDecoding(features.to(self.cfg.device),return_single=True)
+                        
+                if self.cfg.model_name == 'recnet':
+                    if self.decoding_type == 'greedy':
+                        pass #yet to implement
+                    else:
+                        pass # yet to implement
+                    
+                if self.cfg.model_name == 's2vt':
+                    if self.decoding_type == 'greedy':
+                        pass #yet to implement
+                    else:
+                        pass # yet ti implement
                 ide_list += ides
                 caption_list += cap_txt
         for a in zip(ide_list,caption_list):
@@ -52,9 +75,10 @@ class Evaluator:
         if scores['METEOR']>self.meteor_sota:
             self.save_model(model,epoch)
         return scores
-        
+
+
 
     def save_model(self,model,epoch):
-        print('Better result saving models....')
-        filename = os.path.join(self.cfg.saved_models_path, self.cfg.model_name+str(epoch)+'.pt')
+        print('Saving models....')
+        filename = os.path.join(self.path.saved_models_path, self.cfg.model_name+str(epoch)+'.pt')
         torch.save(model,filename)
