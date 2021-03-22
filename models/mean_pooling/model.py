@@ -274,54 +274,62 @@ class MeanPooling(nn.Module):
         vfunc = np.vectorize(lambda t: self.voc.index2word[t]) # to transform tensors to words
         rfunc = np.vectorize(lambda t: '' if t == 'EOS' else t) # to transform EOS to null string
         
-        final_captions = torch.zeros(beam_length,batch_size,max_length)
+        final_captions = torch.ones(beam_length,batch_size,max_length)
         final_scores = torch.tensor([[0]*beam_length for i in range(batch_size)])
-        encoder_output = self.encoder(features).unsqueeze_(0)
+        encoder_output = self.encoder(features).unsqueeze_(0) # shape (1,10,256)
         
-        decoder_input = final_captions[:,:,0].unsqueeze_(1).long().to(self.device)
-        decoder_hidden = encoder_output 
+        decoder_input = torch.ones(beam_length,1,batch_size).long().to(self.device) #
         decoder_hidden = torch.cat(self.cfg.n_layers*[encoder_output])
-        decoder_hidden = torch.stack([decoder_hidden]*beam_length).to(self.device)
+        decoder_hidden = torch.stack([decoder_hidden]*beam_length).to(self.device) # (B,n_layer,10,256)
         if self.cfg.decoder_type == 'lstm':
-            decoder_hidden = (decoder_hidden,decoder_hidden)
+            decoder_hidden_h,decoder_hidden_c = decoder_hidden,decoder_hidden
         for l in range(max_length):
             beam_output = []
+            tmp_scores = copy.deepcopy(final_scores)
             for i in range(beam_length):
                 #split data along the beam dimension and concatenate results
                 if self.cfg.decoder_type == 'lstm':
-                    decoder_output, (decoder_hidden[0][i],decoder_hidden[1][i]) = self.decoder(decoder_input[i],
-                                                                 (decoder_hidden[0][i],decoder_hidden[1][i]))
+                    decoder_output, (decoder_hidden_h[i],decoder_hidden_c[i]) = self.decoder(decoder_input[i],
+                                                                 (decoder_hidden_h[i],decoder_hidden_c[i]))
                 else:
                     decoder_output,decoder_hidden[i] = self.decoder(decoder_input[i],decoder_hidden[i])
                     
                 # add log prob 
-                tmp = (-1)*np.log(decoder_output.squeeze(0).cpu().numpy()) + final_scores[:,i].view(batch_size,1).cpu().numpy()
+                #print(decoder_output.size())
+                decoder_output = F.softmax(decoder_output,dim=2)
+                #print('new size ',decoder_output.size())
+                tmp = np.log(decoder_output.squeeze(0).cpu().numpy()) + tmp_scores[:,i].view(batch_size,1).cpu().numpy()
                 beam_output.append(tmp)
                 
             beam_output = np.concatenate(beam_output,1) 
             value,index = torch.tensor(beam_output).topk(beam_length)
-            #Add this to final captions and final scores
-            final_scores = value
-            for i,ind in enumerate(index.permute(1,0),0): # need to loop over batches
+            final_scores = copy.deepcopy(value)
+            prefinal_caption = copy.deepcopy(final_captions)
+            for ii,ind in enumerate(index.permute(1,0),0): # need to loop over batches
                 for b in range(len(ind)):  
                     kk = int(ind[b].item()/self.voc.num_words)
-                    final_captions[i,b,:(l+1)] = torch.cat([final_captions[kk,b,:l].view(-1),ind[b].float().view(-1)])
-               
-                        
+                    prefinal_caption[ii,b,:(l+1)] = torch.cat([final_captions[kk,b,:l].view(-1),ind[b].float().view(-1)])
+                
+            final_captions = prefinal_caption
+            #print(' final final_captionss :',final_captions)
             #set decoder input
             index = index % self.voc.num_words
-            decoder_input = index.unsqueeze_(1).permute(2,1,0).to(self.device)
+            #print('index shape :',index.size())
+            decoder_input = copy.deepcopy(index).unsqueeze_(1).permute(2,1,0).to(self.device) # shape
+            #print('next time step decoder input shape :',decoder_input.size())
         final_captions = final_captions % self.voc.num_words
+        #print('Final caption tensor shape :',final_captions.size())
         caps_text = []
         captions = vfunc(final_captions.cpu().numpy())
         captions = rfunc(captions)
         if return_single:
-            for eee in captions:
-                caps_text.append(' '.join(x for x in eee[2]))
+            for eee in captions[0]:
+                caps_text.append(' '.join(x for x in eee).strip())
         else:
             for eee in captions:
                 for jj in eee:
-                    caps_text.append(' '.join(x for x in jj))
+                    caps_text.append(' '.join(x for x in jj).strip())
         
         return final_captions,caps_text,final_scores
+         
             
