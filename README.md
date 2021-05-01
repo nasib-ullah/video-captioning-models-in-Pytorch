@@ -1,13 +1,13 @@
 # Video captioning models in Pytorch (Work in progress)
 This repository contains Pytorch implementation of video captioning SOTA models from 2015-2019 on MSVD and MSRVTT datasets. Details are given in below table
 
- | Model | Datasets | Paper name | Year | 
+ | Model | Datasets | Paper name | Year | Status |
  | :---: | :---: | :---: | :---: | 
- | Mean Pooling | MSVD, MSRVTT | Translating videos to natural language using deep recurrent neural networks[[1]](#1) | 2015 | 
- | S2VT | MSVD, MSRVTT | Sequence to Sequence - Video to Text[[2]](#2) | 2015 |
- | SA-LSTM | MSVD, MSRVTT | Describing videos by exploiting temporal structure[[3]](#3) | 2015 |
- | Recnet | MSVD, MSRVTT |  Reconstruction Network for Video Captioning[[4]](#4)  | 2018 |
- | MARN | MSVD, MSRVTT | Memory-Attended Recurrent Network for Video Captioning[[5]](#5) | 2019 |
+ | Mean Pooling | MSVD, MSRVTT | Translating videos to natural language using deep recurrent neural networks[[1]](#1) | 2015 | Implemented |
+ | S2VT | MSVD, MSRVTT | Sequence to Sequence - Video to Text[[2]](#2) | 2015 | Yet to Implement |
+ | SA-LSTM | MSVD, MSRVTT | Describing videos by exploiting temporal structure[[3]](#3) | 2015 | Implemented |
+ | Recnet | MSVD, MSRVTT |  Reconstruction Network for Video Captioning[[4]](#4)  | 2018 | Implemented |
+ | MARN | MSVD, MSRVTT | Memory-Attended Recurrent Network for Video Captioning[[5]](#5) | 2019 | Work in progress |
  
  *More recent models will be added in future
 
