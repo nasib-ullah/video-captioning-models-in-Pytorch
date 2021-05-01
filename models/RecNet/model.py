@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[4]:
-
-
 '''
 Module :  RecNet model
 Authors:  Nasibullah (nasibullah104@gmail.com)
