@@ -2,7 +2,7 @@
 This repository contains Pytorch implementation of video captioning SOTA models from 2015-2019 on MSVD and MSRVTT datasets. Details are given in below table
 
  | Model | Datasets | Paper name | Year | Status |
- | :---: | :---: | :---: | :---: | 
+ | :---: | :---: | :---: | :---: |  :---: |
  | Mean Pooling | MSVD, MSRVTT | Translating videos to natural language using deep recurrent neural networks[[1]](#1) | 2015 | Implemented |
  | S2VT | MSVD, MSRVTT | Sequence to Sequence - Video to Text[[2]](#2) | 2015 | Yet to Implement |
  | SA-LSTM | MSVD, MSRVTT | Describing videos by exploiting temporal structure[[3]](#3) | 2015 | Implemented |
