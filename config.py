@@ -7,7 +7,6 @@ Use : Each model has its own configuration class which contains all hyperparamet
           
 '''
 
-
 import torch
 import os
 
@@ -17,32 +16,51 @@ class ConfigMP:
     '''
     def __init__(self,model_name='mean_pooling'):
         self.model_name = model_name
-        self.dataset = 'msvd' # 'msvd' and 'msrvtt'
-        self.encoder_arch = 'inceptionv4'  #vgg- densenet-1920 resnet inceptionv4 - 1536
-        self.decoder_type = 'lstm'
+        self.dataset = 'msvd'; assert self.dataset in ['msvd','msrvtt']
+        
+        self.cuda_device_id = 0
         if torch.cuda.is_available():
-            self.device = torch.device('cuda') # In case of multiple GPU system use 'cuda:x' where x is GPU device id
+            self.device = torch.device('cuda:'+str(self.cuda_device_id)) 
         else:
             self.device = torch.device('cpu')
-
-        self.batch_size = 64 #suitable 
-        self.val_batch_size = 10
-        if self.encoder_arch == 'inceptionv4':
-            self.input_size = 1536
-        if self.encoder_arch == 'densenet':
-            self.input_size = 1920
-        self.videofeat_size = 256
-        self.embedding_size = 256 # word embedding size
-        self.hidden_size = 256
+        
+        
+        #data configuration
+        self.batch_size = 100 #suitable 
+        self.val_batch_size = 100
+        self.max_caption_length = 30
+        self.opt_truncate_caption = True
+        self.vocabulary_min_count = 3
+        
+        
+        
+        #encoder configuration
+        self.appearance_feature_extractor = 'inceptionv4'  
+        self.appearance_input_size = 1536
+        self.appearance_projected_size = 256
+        self.opt_encoder = True
+        
+        #Decoder configuration
+        self.decoder_type = 'lstm'
+        self.embedding_size = 256
+        self.decoder_input_size = self.embedding_size
+        if self.opt_encoder: 
+            self.decoder_hidden_size = self.appearance_projected_size
+        else:
+            self.decoder_hidden_size = self.appearance_input_size
         self.n_layers = 1
-        self.dropout = 0.4
+        self.dropout = 0.2
+        self.opt_param_init = True   # manually sets parameter initialisation strategy
+        
 
+        #Training configuration
         self.encoder_lr = 1e-4
         self.decoder_lr = 1e-4
         self.teacher_forcing_ratio = 0.7 #
-        self.clip = 5 # clip the gradient to counter exploding gradient problem
+        self.clip = 5 #clip the gradient to counter exploding gradient problem
         self.print_every = 400
 
+        #vocabulary configuration
         self.SOS_token = 1
         self.EOS_token = 2
         self.PAD_token = 0
@@ -59,31 +77,48 @@ class Path:
             self.local_path = os.path.join(working_path,'MSVD')     
             self.video_path = 'path_to_raw_video_data' # For future use
             self.caption_path = os.path.join(self.local_path,'captions')
+            self.feature_path = os.path.join(self.local_path,'features')
         
             self.name_mapping_file = os.path.join(self.caption_path,'youtube_mapping.txt')
             self.train_annotation_file = os.path.join(self.caption_path,'sents_train_lc_nopunc.txt')
             self.val_annotation_file = os.path.join(self.caption_path,'sents_val_lc_nopunc.txt')
             self.test_annotation_file = os.path.join(self.caption_path,'sents_test_lc_nopunc.txt')
             
-            if cfg.encoder_arch == 'densenet':
-            	self.feature_path = os.path.join(os.path.join(self.local_path,'features'),'Densenet')
-            elif cfg.encoder_arch == 'vgg':
-                self.feature_path = os.path.join(os.path.join(self.local_path,'features'),'VGG')
-            else:
-                self.feature_path = os.path.join(os.path.join(self.local_path,'features'),'Inceptionv4')
-                self.feature_file = os.path.join(self.feature_path,'MSVD_InceptionV4.hdf5')
+          
+            if cfg.appearance_feature_extractor == 'inceptionv4':
+                self.appearance_feature_file = os.path.join(self.feature_path,'MSVD_APPEARANCE_INCEPTIONV4_28.hdf5')
+                
+            if cfg.appearance_feature_extractor == 'inceptionresnetv2':
+                self.appearance_feature_file = os.path.join(self.feature_path,'MSVD_APPEARANCE_INCEPTIONRESNETV2_28.hdf5')
+                
+            if cfg.appearance_feature_extractor == 'resnet101':
+                self.appearance_feature_file = os.path.join(self.feature_path,'MSVD_APPEARANCE_RESNET101_28.hdf5')
+            
+            self.motion_feature_file = os.path.join(self.feature_path,'MSVD_MOTION_RESNEXT101_16_28.hdf5')
+            #self.object_feature_file = os.path.join(self.feature_path,'MSVD_APPEARANCE_INCEPTIONV4.hdf5')
                 
 
         if cfg.dataset == 'msrvtt':
             self.local_path = os.path.join(working_path,'MSRVTT')
             self.video_path = '/media/nasibullah/Ubuntu/DataSets/MSRVTT/'
             self.caption_path = os.path.join(self.local_path,'captions')
-            self.feature_path = os.path.join(os.path.join(self.local_path,'features'),'Inceptionv4')
-
+            self.feature_path = os.path.join(self.local_path,'features')
+            
             self.category_file_path = os.path.join(self.caption_path,'category.txt')
             self.train_val_annotation_file = os.path.join(self.caption_path,'train_val_videodatainfo.json')
             self.test_annotation_file = os.path.join(self.caption_path,'test_videodatainfo.json')
-            self.feature_file = os.path.join(self.feature_path,'MSR-VTT_InceptionV4.hdf5')
+            
+            if cfg.appearance_feature_extractor == 'inceptionv4':
+                self.appearance_feature_file = os.path.join(self.feature_path,'MSRVTT_APPEARANCE_INCEPTIONV4_28.hdf5')
+                
+            if cfg.appearance_feature_extractor == 'inceptionresnetv2':
+                self.appearance_feature_file = os.path.join(self.feature_path,'MSRVTT_APPEARANCE_INCEPTIONRESNETV2_28.hdf5')
+                
+            if cfg.appearance_feature_extractor == 'resnet101':
+                self.appearance_feature_file = os.path.join(self.feature_path,'MSRVTT_APPEARANCE_RESNET101_28.hdf5')
+                
+                
+                
 
             self.val_id_list = list(range(6513,7010))
             self.train_id_list = list(range(0,6513))
@@ -99,37 +134,69 @@ class ConfigSALSTM:
     '''
     def __init__(self,model_name='sa-lstm'):
         self.model_name = model_name
-        self.dataset = 'msvd' # 'msvd' and 'msrvtt'
-        self.encoder_arch = 'inceptionv4'  #vgg- densenet-1920 resnet inceptionv4 - 1536
-        self.decoder_type = 'lstm'
+        
+        #Device configuration
+        self.cuda_device_id = 0
         if torch.cuda.is_available():
-            self.device = torch.device('cuda') # In case of multiple GPU system use 'cuda:x' where x is GPU device id
+            self.device = torch.device('cuda:'+str(self.cuda_device_id)) 
         else:
             self.device = torch.device('cpu')
-
-        self.batch_size = 100 #suitable 
-        self.val_batch_size = 10
-        if self.encoder_arch == 'inceptionv4':
-            self.feat_size = 1536
-        if self.encoder_arch == 'densenet':
-            self.feat_size = 1920
-        self.feat_len = 40
+        
+        #Dataloader configuration
+        self.dataset = 'msvd' 
+        self.batch_size = 200 #suitable 
+        self.val_batch_size = 50
+        self.opt_truncate_caption = True
+        self.max_caption_length = 30
+        
+        
+        #Encoder configuration
+        self.appearance_feature_extractor = 'inceptionresnetv2'  
+        self.appearance_input_size = 1536
+        self.appearance_projected_size = 512
+        self.frame_len = 28
+        self.opt_encoder = False
+        
+        
+        #Decoder configuration
+        self.decoder_type = 'lstm'
         self.embedding_size = 468 # word embedding size
-        self.hidden_size = 512
-        self.attn_size = 256
+        if self.opt_encoder:
+            self.feat_size =  self.appearance_projected_size
+        else:
+            self.feat_size = self.appearance_input_size 
+         
+        self.decoder_input_size = self.feat_size + self.embedding_size
+        self.decoder_hidden_size = 512  #Hidden size of decoder LSTM
+        self.attn_size = 256  # attention bottleneck
         self.n_layers = 1
-        self.dropout = 0.4
-        self.rnn_dropout = 0.1
-
+        self.dropout = 0.0
+        self.rnn_dropout = 0.5
+        self.opt_param_init = True
+        self.beam_length = 5
+       
+        
+        #Training configuration
+        self.encoder_lr = 1e-4
         self.decoder_lr = 1e-4
-        self.teacher_forcing_ratio = 0.7 #
+        self.teacher_forcing_ratio = 1.0 #
         self.clip = 5 # clip the gradient to counter exploding gradient problem
         self.print_every = 400
+        
+        self.lr_decay_start_from = 20
+        self.lr_decay_gamma = 0.5
+        self.lr_decay_patience = 5
+        self.weight_decay = 1e-5
+        self.reg_lambda = 0.
+        
 
+        #Vocabulary configuration
         self.SOS_token = 1
         self.EOS_token = 2
         self.PAD_token = 0
         self.UNK_token = 3
+        
+        
 
 
 class ConfigS2VT:
@@ -166,71 +233,155 @@ class ConfigS2VT:
 
 class ConfigRecNet:
     '''
-    Hyperparameter settings for Reconstruction Network (RecNet) model.
+    Hyperparameter settings for Reconstruction (RecNet) model
+    Beam search with beam length 5
     '''
-    def __init__(self,model_name='mean_pooling'):
+    def __init__(self,model_name='recnet'):
         self.model_name = model_name
-        self.dataset = 'msvd' # 'msvd' and 'msrvtt'
-        self.encoder_arch = 'inceptionv4'  #vgg- densenet-1920 resnet inceptionv4 - 1536
-        self.decoder_type = 'lstm'
+        
+        #Device configuration
+        self.cuda_device_id = 0
         if torch.cuda.is_available():
-            self.device = torch.device('cuda') # In case of multiple GPU system use 'cuda:x' where x is GPU device id
+            self.device = torch.device('cuda:'+str(self.cuda_device_id)) 
         else:
             self.device = torch.device('cpu')
-
-        self.batch_size = 64 #suitable 
-        self.val_batch_size = 10
-        if self.encoder_arch == 'inceptionv4':
-            self.input_size = 1536
-        if self.encoder_arch == 'densenet':
-            self.input_size = 1920
-        self.videofeat_size = 256
-        self.embedding_size = 256 # word embedding size
-        self.hidden_size = 256
+        
+        #Dataloader configuration
+        self.dataset = 'msvd' 
+        self.batch_size = 50 #suitable 
+        self.val_batch_size = 50
+        self.opt_truncate_caption = True
+        self.max_caption_length = 30
+        
+        
+        #Encoder configuration
+        self.appearance_feature_extractor = 'inceptionv4'  
+        self.appearance_input_size = 1536
+        self.appearance_projected_size = 512
+        self.frame_len = 28
+        self.opt_encoder = False
+        
+        
+        #Decoder configuration
+        self.decoder_type = 'lstm'
+        if self.opt_encoder:
+            self.feat_size =  self.appearance_projected_size
+        else:
+            self.feat_size = self.appearance_input_size
+        
+        self.embedding_size = 468 # word embedding size 
+        self.decoder_input_size = self.feat_size + self.embedding_size
+        self.decoder_hidden_size = 512  #Hidden size of decoder LSTM
+        self.attn_size = 256  # attention bottleneck
         self.n_layers = 1
-        self.dropout = 0.4
-
+        self.dropout = 0.2
+        self.rnn_dropout = 0.2
+        self.opt_param_init = True
+        self.beam_length = 3
+       
+        
+        #Training configuration
         self.encoder_lr = 1e-4
         self.decoder_lr = 1e-4
-        self.teacher_forcing_ratio = 0.7 #
+        self.global_lr = 1e-4
+        self.local_lr = 1e-4
+        self.teacher_forcing_ratio = 0.9 #
         self.clip = 5 # clip the gradient to counter exploding gradient problem
         self.print_every = 400
+        self.lmda = 0.2
+        self.training_stage = 1
 
-
-class ConfigMARN:
-    '''
-    Hyperparameter settings for MARN model.
-    '''
-    def __init__(self,model_name='sa-lstm'):
-        self.model_name = model_name
-        self.dataset = 'msvd' # 'msvd' and 'msrvtt'
-        self.encoder_arch = 'inceptionv4'  #vgg- densenet-1920 resnet inceptionv4 - 1536
-        self.decoder_type = 'lstm'
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda') # In case of multiple GPU system use 'cuda:x' where x is GPU device id
-        else:
-            self.device = torch.device('cpu')
-
-        self.batch_size = 100 #suitable 
-        self.val_batch_size = 10
-        if self.encoder_arch == 'inceptionv4':
-            self.feat_size = 1536
-        if self.encoder_arch == 'densenet':
-            self.feat_size = 1920
-        self.feat_len = 40
-        self.embedding_size = 468 # word embedding size
-        self.hidden_size = 512
-        self.attn_size = 256
-        self.n_layers = 1
-        self.dropout = 0.4
-        self.rnn_dropout = 0.1
-
-        self.decoder_lr = 1e-4
-        self.teacher_forcing_ratio = 0.7 #
-        self.clip = 5 # clip the gradient to counter exploding gradient problem
-        self.print_every = 400
-
+        #Vocabulary configuration
         self.SOS_token = 1
         self.EOS_token = 2
         self.PAD_token = 0
         self.UNK_token = 3
+        
+        
+        #Global reconstructor configuration
+        self.global_reconstructor_type = 'lstm'
+        self.global_reconstructor_n_layers = 1
+        self.global_reconstructor_hidden_size = self.feat_size    
+        self.global_reconstructor_rnn_dropout = 0.1
+        
+        
+        
+        #Local reconstructor configuration
+        self.local_reconstructor_type = 'lstm'
+        self.local_reconstructor_n_layers = 1
+        self.local_reconstructor_hidden_size = self.feat_size
+        self.local_reconstructor_rnn_dropout = 0.1
+        self.local_reconstructor_attn_size = 256
+        
+        self.reconstructor_type = 'local'
+        
+        
+        
+        
+        
+        
+class ConfigMARN:
+    '''
+    Hyperparameter settings for MARN model.
+    '''
+    def __init__(self,model_name='marn'):
+        
+        self.model_name = model_name
+        self.cuda_device_id = 0
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda:'+str(self.cuda_device_id)) 
+        else:
+            self.device = torch.device('cpu')
+
+        
+        #Data related Configuration
+        self.dataset = 'msvd' # from set {'msvd','msrvtt'}
+        self.vocabulary_min_count = 3
+        self.batch_size = 100 #suitable 
+        self.val_batch_size = 10
+        self.opt_truncate_caption = False
+        self.max_caption_length = 30
+        
+        
+        # Encoder related configuration
+        self.appearance_feature_extractor = 'resnet-101'
+        self.motion_feature_extractor = 'resnext-101'
+        
+        self.frame_len = 28
+        self.motion_depth = 16
+        
+        self.appearance_input_size = 2048
+        self.appearance_projected_size = 512
+        self.motion_input_size = 2048
+        self.motion_projected_size = 512
+        
+        # Decoder related configuration
+        self.decoder_type = 'gru' # from set {lstm,gru}
+        self.embedding_size = 512 # word embedding size
+        self.decoder_hidden_size = 512
+        self.attn_size = 256
+        self.n_layers = 1
+        self.dropout = 0.4
+        self.rnn_dropout = 0.1
+        self.opt_param_init = False   # manually sets parameter initialisation strategy
+        
+        # Training related configuration
+        self.decoder_lr = 1e-4
+        self.teacher_forcing_ratio = 0.7 #
+        self.clip = 5 # clip the gradient to counter exploding gradient problem
+        self.print_every = 400
+        self.total_epochs = 1000
+        self.lr_reduction = 0.5
+        self.lr_reduction_step = 50
+        
+
+        #Vocabulary related configuration
+        self.SOS_token = 1
+        self.EOS_token = 2
+        self.PAD_token = 0
+        self.UNK_token = 3
+        
+        #Attend memory decoder configuration
+        self.topk = 256
+        
+        
