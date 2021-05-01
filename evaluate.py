@@ -13,7 +13,7 @@ class Evaluator:
     
     def __init__(self,model,dataloader,path,cfg,reference_dict,decoding_type = 'greedy'):
         '''
-        Decoding type : {'greedy','beam','semibeam'}
+        Decoding type : {'greedy','beam','beam_beta}
         '''
         self.path = path
         self.cfg = cfg
@@ -34,25 +34,25 @@ class Evaluator:
         model.eval()
         with torch.no_grad():
             for data in self.dataloader:
-                features, targets, mask, max_length,ides= data
+                features, targets, mask, max_length,ides,motion_feat,object_feat= data
                 if self.cfg.model_name == 'mean_pooling':
                     if self.decoding_type == 'greedy':
                         cap,cap_txt = model.GreedyDecoding(features.to(self.cfg.device))
-                    elif self.decoding_type == 'beam':
+                    if self.decoding_type == 'beam':
                         tensor,cap_txt,scores = model.BeamDecoding(features.to(self.cfg.device),return_single=True)
-                    else:
-                        cap_txt,result,scores = model.SemiBeamDecoding(features.to(self.cfg.device))
+                    
                 if self.cfg.model_name == 'sa-lstm':
                     if self.decoding_type == 'greedy':
-                        cap,cap_txt,_ = model.GreedyDecoding(features)
-                    else:
-                        cap,cap_txt,scoes = model.BeamDecoding(features.to(self.cfg.device),return_single=True)
+                        cap,cap_txt,_ = model.GreedyDecoding(features.to(self.cfg.device))
+                    if self.decoding_type == 'beam':
+                        cap_txt = model.BeamDecoding(features.to(self.cfg.device),self.cfg.beam_length)
+                        
                         
                 if self.cfg.model_name == 'recnet':
                     if self.decoding_type == 'greedy':
-                        pass #yet to implement
+                        cap,cap_txt,_ = model.GreedyDecoding(features.to(self.cfg.device))
                     else:
-                        pass # yet to implement
+                        cap_txt = model.BeamDecoding(features.to(self.cfg.device),self.cfg.beam_length)
                     
                 if self.cfg.model_name == 's2vt':
                     if self.decoding_type == 'greedy':
@@ -69,11 +69,6 @@ class Evaluator:
         scores = scorer.score(self.reference_dict,self.prediction_dict)
         self.scores[epoch] = scores
         self.losses[epoch] = loss
-        if scores['METEOR']>self.meteor:
-            self.meteor = scores['METEOR']
-            self.best_model = model
-        if scores['METEOR']>self.meteor_sota:
-            self.save_model(model,epoch)
         return scores
 
 
