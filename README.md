@@ -50,6 +50,7 @@ Clone evaluation codes from [the official coco-evaluation repo](https://github.c
    (.env) $ mv coco-caption/pycocoevalcap .
    (.env) $ rm -rf coco-caption
    ```
+   Or simply copy the pycocoevalcap folder and its contents in the project root.
 
 ### Step 4. Training
 Follow the demo given in `video_captioning.ipynb`.
