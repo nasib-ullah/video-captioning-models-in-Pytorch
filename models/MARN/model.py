@@ -1,12 +1,15 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[2]:
-
 
 '''
 Module :  MARN model
 Authors:  Nasibullah (nasibullah104@gmail.com)
+Details : Implementation of the paper Memory Attended Recurrent Network for Video captioning.
+          This implementation differ from original paper in 2 aspects.
+          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean pooling has been done 
+              over frame features. Its not clear in the paper how to use attention values without propagating signal through the decoder.
+          (2) Didn't consider the auxiliary features
+          
+Notations : B : Batch_size, T : Frame dimension, F : dimension of pre-trained CNN extracted features,
+            F' : projected feature dimension.
 
 '''
 
@@ -40,7 +43,7 @@ class Encoder(nn.Module):
         Encoder module. Project the video appearance and motion features into a different space which will be 
         send to the decoder.
         Argumets:
-          input_size : CNN extracted feature size. For Densenet 1920, For inceptionv4 1536
+          input_size : CNN extracted feature size. [resnet101,Resnext101 - 2048, Inceptionv4,Inceptionresnetv2 - 1536]
           output_size : Dimention of projected space.
         '''
         
@@ -57,7 +60,6 @@ class Encoder(nn.Module):
             appearance_out : (B,T,F')
             motion_out : (B,T,F')
         
-        
         '''
         appearance_out = self.appearance_projection_layer(appearance_feat)
         motion_out = self.motion_projection_layer(motion_feat)
@@ -69,8 +71,8 @@ class TemporalAttention(nn.Module):
     def __init__(self,cfg):
         super(TemporalAttention,self).__init__()
         '''
-        Temporal Attention module. It depends on previous hidden memory in the decoder(of shape hidden_size),
-        feature at the source side ( of shape(196,feat_size) ).  
+        Temporal Attention module. It depends on previous hidden memory in the decoder,
+        feature at the source side 
         at(s) = align(ht,hs)
               = exp(score(ht,hs)) / Sum(exp(score(ht,hs')))  
         where
@@ -80,7 +82,7 @@ class TemporalAttention(nn.Module):
         Here we have used concat formulae.
         Argumets:
           hidden_size : hidden memory size of decoder. (batch,hidden_size)
-          feat_size : feature size of each grid (annotation vector) at encoder side.
+          feat_size : feature size of each frame at encoder side.
           bottleneck_size : intermediate size.
         '''
         
@@ -95,9 +97,8 @@ class TemporalAttention(nn.Module):
         
     def forward(self,hidden,feats):
         '''
-        shape of hidden (hidden_size) (batch,hidden_size) #(100,512)
-        shape of feats (batch size,
-        ,feat_size)  #(100,40,1536)
+        shape of hidden : (hidden_size) (batch,hidden_size) #(100,512)
+        shape of feats : (batch size,feat_size)  #(100,40,1536)
         '''
         Wh = self.decoder_projection(hidden)  
         Uv = self.encoder_projection(feats)   
@@ -174,7 +175,7 @@ class RecurrentDecoder(nn.Module):
 class MARN(nn.Module):
     
     def __init__(self,voc,cfg,path):
-        super(SALSTM,self).__init__()
+        super(MARN,self).__init__()
 
         self.voc = voc
         self.path = path
@@ -271,6 +272,7 @@ class MARN(nn.Module):
         Args:
         Inputs:
             input_variable : video mini-batch tensor; size = (B,T,F)
+            motion_variable : video motion tensor; size = (B,T,F)
             target_variable : Ground Truth Captions;  size = (T,B); T will be different for different mini-batches
             mask : Masked tensor for Ground Truth;    size = (T,C)
             max_target_len : maximum lengh of the mini-batch; size = T
@@ -341,10 +343,67 @@ class MARN(nn.Module):
         
         return sum(print_losses) / n_totals
     
+    def _calculate_AC_loss(self,alphas):
+        '''
+        Calculate Attention-Coherent Loss.
+        '''
+        alphas = alphas.squeeze(2)
+        alpha_next = alphas[:,1:]
+        alpha_previous = alphas[:,:-1]
+        ac_loss = torch.abs(alpha_next - alpha_previous).sum()
+        
+        return ac_loss
+    
+    def _generate_word2videos(self,data_handler):
+        vid2words = {}
+        self.word2vid = {}
+        word_list = list(self.voc.word2index.keys())[3:]
+        for k,v in data_handler.train_dict.items():
+            words = ' '.join([x for x in v]).split(' ')
+            vid2words[k] = words
+        for word in word_list:
+            temp = []
+            for k,v in vid2words.items():
+                if word in v:
+                    temp.append(k)
+            self.word2vid[word] = temp 
+        self.word_list = word_list
+            
+    def _generate_visual_context_vector(self,word,data_handler):
+        appearance_list = []
+        motion_list = []
+        vid_list = self.word2vid[word]
+        for vid in vid_list:
+            apr,mtn = self.encoder(torch.tensor(data_handler.appearance_feature_dict[vid]).to(self.device),
+                         torch.tensor(data_handler.appearance_feature_dict[vid]).to(self.device))
+            appearance_list.append(apr.mean(dim=0))
+            motion_list.append(mtn.mean(dim=0))
+        if len(vid_list) == 0:
+            appearance_list.append(torch.zeros(self.cfg.appearance_projected_size))
+            motion_list.append(torch.zeros(self.cfg.motion_projected_size))
+        appearance_tensor = torch.stack(appearance_list).mean(dim=0)
+        motion_tensor = torch.stack(motion_list).mean(dim=0)
+        
+        gr = appearance_tensor + motion_tensor
+        return gr.detach()
+    
+    def _generate_word_embedding(self,word):
+        word = torch.tensor([[self.voc.word2index[word]]])
+        word_feat = self.decoder.embedding(word.to(self.device)).detach()
+        return word_feat
+        
+    def _generate_auxiliary_features(self):
+        pass
+
     def generate_memory(self,data_handler):
-        self.voc.word2index.keys()
-    
-    
+        self._generate_word2videos(data_handler)
+        for word in self.word_list:
+            er = self._generate_word_embedding(word)
+            gr = self._generate_visual_context_vector(word,data_handler)
+            #auxiliary_feat = self._generate_auxiliary_features(word)
+            self.word_memory[word] = (gr,er)
+        
+        
     @torch.no_grad()
     def GreedyDecoding(self,features,motion_features,max_length=15):
         batch_size = features.size()[0]
@@ -491,4 +550,3 @@ class MARN(nn.Module):
         return caps_text
 
     
-
