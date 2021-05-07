@@ -4,7 +4,8 @@ Module :  MARN model
 Authors:  Nasibullah (nasibullah104@gmail.com)
 Details : Implementation of the paper Memory Attended Recurrent Network for Video captioning.
           This implementation differ from original paper in 2 aspects.
-          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean                   pooling has been done over frame features. Its not clear in the paper how to use attention values without                       propagating signal through the decoder.
+          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean pooling has been done over 
+              frame features. Its not clear in the paper how to use attention values without propagating signal through the decoder.
           (2) Didn't consider the auxiliary features
           
 Notations : B : Batch_size, T : Frame dimension, F : dimension of pre-trained CNN extracted features,
