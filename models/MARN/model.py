@@ -4,12 +4,11 @@ Module :  MARN model
 Authors:  Nasibullah (nasibullah104@gmail.com)
 Details : Implementation of the paper Memory Attended Recurrent Network for Video captioning.
           This implementation differ from original paper in 2 aspects.
-          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean pooling has been done 
-              over frame features. Its not clear in the paper how to use attention values without propagating signal through the decoder.
+          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean                   pooling has been done over frame features. Its not clear in the paper how to use attention values without                       propagating signal through the decoder.
           (2) Didn't consider the auxiliary features
           
 Notations : B : Batch_size, T : Frame dimension, F : dimension of pre-trained CNN extracted features,
-            F' : projected feature dimension.
+            F' : projected feature dimension, E : Word embedding, h : decoder hidden size.
 
 '''
 
@@ -170,8 +169,48 @@ class RecurrentDecoder(nn.Module):
         output = F.softmax(output, dim = 1) #(100,num_words)
         return output, hidden, appearance_weights 
     
-
     
+class AttendedMemoryDecoder(nn.Module):
+    def __init__(self,cfg,voc,path):
+        super(AttendedMemoryDecoder,self).__init__()
+        
+        self.cfg = cfg
+        self.voc = voc
+        self.path = path
+        
+        self.decoder_visual_context_projection = nn.Linear(cfg.feat_size,cfg.amd_bottleneck_size)
+        self.decoder_hidden_projection = nn.Linear(cfg.decoder_hidden_size,cfg.amd_bottleneck_size)
+        self.decoder_word_embed_projection = nn.Linear(cfg.embedding_size,cfg.amd_bottleneck_size)
+        
+        self.memory_visual_context_projection = nn.Linear(cfg.feat_size,cfg.amd_bottleneck_size)
+        self.memory_word_embed_projection = nn.Linear(cfg.embedding_size,cfg.amd_bottleneck_size)
+        
+        self.output = nn.Linear(cfg.amd_bottleneck_size,voc.num_words)
+        
+    def forward(self,ct,gi,et,ei,ht):
+        '''
+        Forward pass through Attended memory decoder.
+        we run this one step (word) at a time.
+        Args:
+            ct : contect vector from decoder at time step t. (B,F')
+            gi : The visual context from memory for current(tth) word. (B,F') 
+            et : word embedding from decoder for current word. (B,E)
+            ei : word context from memory for current word. (B,E)
+            ht : Last hidden memory of decoder LSTM. (B,h)
+            
+        
+        '''
+        decoder_visual = self.decoder_visual_context_projection(ct)
+        memory_visual = self.memory_visual_context_projection(gi)
+        decoder_word_embd = self.decoder_word_embed_projection(et)
+        memory_word_embd = self.memory_word_embed_projection(ei)
+        decoder_hidden = self.decoder_hidden_projection(ht)
+        out = decoder_visual+memory_visual+decoder_word_embd+memory_word_embd+decoder_hidden
+        output = self.output(out)
+        output = F.softmax(output, dim = 1)        
+        return output
+        
+
 class MARN(nn.Module):
     
     def __init__(self,voc,cfg,path):
@@ -549,4 +588,3 @@ class MARN(nn.Module):
         
         return caps_text
 
-    
