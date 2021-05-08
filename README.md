@@ -64,7 +64,7 @@ Follow the demo given in `video_captioning.ipynb`.
  | Model | Pretrained model | BLEU4 | METEOR | ROUGE_L | CIDER | Pretrained |
  | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
  | Mean Pooling | Inceptionv4 | 42.2 | 31.6 | 68.2 | 69.7 | [link](https://drive.google.com/file/d/1Oj5yMIKnU5obe0UXTknvX9S70CFVH7nz/view?usp=sharing) |
- | SA-LSTM | Inceptionv4 | - | - | - | - | - |
+ | SA-LSTM | InceptionvResNetV2 | 45.5 | 32.5 | 69.0 | 78.0 | - |
  | S2VT | Inceptionv4 | - | - | - | - | - |
  | RecNet (global ) | Inceptionv4 | - | - | - | - | - |
  | RecNet (local) | Inceptionv4 | -| - | - | - | - |
