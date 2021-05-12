@@ -35,10 +35,11 @@ $ source .env/bin/activate
 ### Step 2. Prepare data, path and hyperparameter settings
 1. Extract features from network you want to use, and locate them at `<PROJECT ROOT>/<DATASET>/features/<DATASET>_APPEARANCE_<NETWORK>_<FRAME_LENGTH>.hdf5`. To extracted features follow the repository [here](https://github.com/nasib104/video_feature_extraction). Or simply download the already extracted features from given table and locate them in `<PROJECT ROOT>/<DATASET>/features/`
 
-   | Dataset | Feature Type | Inception-v4 | InceptionResNetV2 | ResNet-101 |
-   | :---: | :---: |  :---: | :---: | :---: |
-   | MSVD | Appearance | [link](https://www.dropbox.com/s/m8llhpvxpzge5jj/MSVD_APPEARANCE_INCEPTIONV4_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/1podxw82gl1pavg/MSVD_APPEARANCE_INCEPTIONRESNETV2_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/34ay6if4j2gfcgz/MSVD_APPEARANCE_RESNET101_28.hdf5?dl=0) |
-   | MSR-VTT | Appearance | [link](https://www.dropbox.com/s/13k4rruu84a42va/MSRVTT_APPEARANCE_INCEPTIONV4_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/j15hkyw4sy59cxp/MSRVTT_APPEARANCE_INCEPTIONRESNETV2_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/yfwjps6cs0y8drm/MSRVTT_APPEARANCE_RESNET101_28.hdf5?dl=0) |
+   | Dataset | Feature Type | Inception-v4 | InceptionResNetV2 | ResNet-101 | REsNext-101 |
+   | :---: | :---: |  :---: | :---: | :---: | :---: |
+   | MSVD | Appearance | [link](https://www.dropbox.com/s/m8llhpvxpzge5jj/MSVD_APPEARANCE_INCEPTIONV4_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/1podxw82gl1pavg/MSVD_APPEARANCE_INCEPTIONRESNETV2_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/34ay6if4j2gfcgz/MSVD_APPEARANCE_RESNET101_28.hdf5?dl=0) | - |
+   | MSR-VTT | Appearance | [link](https://www.dropbox.com/s/13k4rruu84a42va/MSRVTT_APPEARANCE_INCEPTIONV4_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/j15hkyw4sy59cxp/MSRVTT_APPEARANCE_INCEPTIONRESNETV2_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/yfwjps6cs0y8drm/MSRVTT_APPEARANCE_RESNET101_28.hdf5?dl=0) | - |
+   | MSVD | Motion | - | - | - | [link](https://www.dropbox.com/s/1m7leypc6xgmb35/MSVD_MOTION_RESNEXT101.hdf5?dl=0) |
 
 You can change hyperparameters by modifying `config.py`.
 
