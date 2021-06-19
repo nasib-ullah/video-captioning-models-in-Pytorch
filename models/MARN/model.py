@@ -3,9 +3,9 @@
 Module :  MARN model
 Authors:  Nasibullah (nasibullah104@gmail.com)
 Details : Implementation of the paper Memory Attended Recurrent Network for Video captioning.
-          This implementation differs from original paper in 2 aspects.
-          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean pooling has been done over 
-              frame features. Its not clear in the paper how to use attention values without propagating signal through the decoder.
+          This implementation differ from original paper in 2 aspects.
+          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean pooling has been done over frame 
+          features. Its not clear in the paper how to use attention values without propagating signal through the decoder.
           (2) Didn't consider the auxiliary features
           
 Notations : B : Batch_size, T : Frame dimension, F : dimension of pre-trained CNN extracted features,
@@ -161,14 +161,16 @@ class RecurrentDecoder(nn.Module):
         last_hidden = last_hidden[-1]
         appearance_feats, appearance_weights = self.attention(last_hidden,appearance_feats) #(100,1536) #(100,28,1)
         motion_feats, motion_weights = self.attention(last_hidden,motion_feats) #(100,1536) #(100,28,1)
-        context_vector = torch.cat((appearance_feats,motion_feats),dim=1).unsqueeze(0) (1,B,512*2)
+        context_vector = torch.cat((appearance_feats,motion_feats),dim=1).unsqueeze(0) #(1,B,512*2)
+        #print('context vector size :',context_vector.size())
+        #print('embedded size :',embedded.size())
         
         input_combined = torch.cat((embedded,context_vector),dim=2)
         output, hidden = self.rnn(input_combined, hidden) # (1,100,512)
         output = output.squeeze(0) # (100,512)
         output = self.out(output) # (100,num_words)
         output = F.softmax(output, dim = 1) #(100,num_words)
-        return output, hidden, appearance_weights 
+        return output, hidden, appearance_weights,context_vector,embedded 
     
     
 class AttendedMemoryDecoder(nn.Module):
@@ -179,21 +181,21 @@ class AttendedMemoryDecoder(nn.Module):
         self.voc = voc
         self.path = path
         
-        self.decoder_visual_context_projection = nn.Linear(cfg.feat_size,cfg.amd_bottleneck_size)
+        self.decoder_visual_context_projection = nn.Linear(2*cfg.feat_size,cfg.amd_bottleneck_size)
         self.decoder_hidden_projection = nn.Linear(cfg.decoder_hidden_size,cfg.amd_bottleneck_size)
         self.decoder_word_embed_projection = nn.Linear(cfg.embedding_size,cfg.amd_bottleneck_size)
         
         self.memory_visual_context_projection = nn.Linear(cfg.feat_size,cfg.amd_bottleneck_size)
         self.memory_word_embed_projection = nn.Linear(cfg.embedding_size,cfg.amd_bottleneck_size)
         
-        self.output = nn.Linear(cfg.amd_bottleneck_size,voc.num_words)
+        self.output = nn.Linear(cfg.amd_bottleneck_size,1)
         
-    def forward(self,ct,gi,et,ei,ht):
+    def forward(self,ct,et,ht,memory):
         '''
         Forward pass through Attended memory decoder.
         we run this one step (word) at a time.
         Args:
-            ct : contect vector from decoder at time step t. (B,F')
+            ct : contect vector from decoder at time step t. (B,2F')
             gi : The visual context from memory for current(tth) word. (B,F') 
             et : word embedding from decoder for current word. (B,E)
             ei : word context from memory for current word. (B,E)
@@ -201,15 +203,35 @@ class AttendedMemoryDecoder(nn.Module):
             
         
         '''
-        decoder_visual = self.decoder_visual_context_projection(ct)
-        memory_visual = self.memory_visual_context_projection(gi)
-        decoder_word_embd = self.decoder_word_embed_projection(et)
+        
+        ei,gi = self._create_memory_representation(memory)
+        
         memory_word_embd = self.memory_word_embed_projection(ei)
-        decoder_hidden = self.decoder_hidden_projection(ht)
-        out = decoder_visual+memory_visual+decoder_word_embd+memory_word_embd+decoder_hidden
-        output = self.output(out)
-        output = F.softmax(output, dim = 1)        
+        memory_visual = self.memory_visual_context_projection(gi)
+        
+        
+        decoder_visual = self.decoder_visual_context_projection(ct).unsqueeze(1).expand_as(memory_visual)
+        decoder_word_embd = self.decoder_word_embed_projection(et).unsqueeze(1).expand_as(memory_word_embd)
+        decoder_hidden = self.decoder_hidden_projection(ht).unsqueeze(1).expand_as(memory_visual)
+        
+        out = torch.tanh(decoder_visual+memory_visual+decoder_word_embd+memory_word_embd+decoder_hidden) 
+        output = self.output(out).squeeze(2) #(B,V,1) -> (B,V)
+        output = F.softmax(output, dim = 1) # (B,V)        
         return output
+    
+    def _create_memory_representation(self,memory):
+        ei, gi = [],[]
+        for i in range(len(self.voc)):
+            word = self.voc.id2word[i]
+            (g,e) = memory[word]
+            ei.append(e)
+            gi.append(g)
+        ei = torch.stack(ei,0)
+        gi = torch.stack(gi,0)
+        ei = ei.repeat(self.cfg.batch_size,1,1)
+        gi = gi.repeat(self.cfg.batch_size,1,1)
+        return ei,gi
+        
         
 
 class MARN(nn.Module):
@@ -228,11 +250,15 @@ class MARN(nn.Module):
 
         self.decoder = RecurrentDecoder(cfg,voc).to(cfg.device)
         self.dec_optimizer = optim.Adam(self.decoder.parameters(),lr=cfg.decoder_lr,amsgrad=True)
+        
+        self.memory_decoder = AttendedMemoryDecoder(cfg,voc,path).to(cfg.device)
+        self.memory_dec_optimizer = optim.Adam(self.memory_decoder.parameters(),lr = cfg.memory_decoder_lr)
     
         self.teacher_forcing_ratio = cfg.teacher_forcing_ratio
         self.print_every = cfg.print_every
         self.clip = cfg.clip
         self.device = cfg.device
+        self.opt_memory_decoder = cfg.opt_memory_decoder
         if cfg.opt_param_init:
             self.init_params()
         self.epoch = 0
@@ -252,6 +278,8 @@ class MARN(nn.Module):
         self.enc_optimizer = optim.Adam(self.encoder.parameters(),lr=cfg.encoder_lr)
         
         self.dec_optimizer = optim.Adam(self.decoder.parameters(),lr=cfg.decoder_lr,amsgrad=True)
+        if self.opt_memory_decoder:
+            self.memory_dec_optimizer = optim.Adam(self.memory_decoder.parameters(),lr = cfg.memory_decoder_lr)
         self.teacher_forcing_ratio = cfg.teacher_forcing_ratio
         
         
@@ -280,28 +308,35 @@ class MARN(nn.Module):
              epoch_loss : Average single time step loss for an epoch
         '''
         total_loss = 0
+        total_ac_loss = 0
         start_iteration = 1
         print_loss = 0
+        print_ac_loss = 0
         iteration = 1
         self.encoder.train()
         self.decoder.train()
         for data in dataloader:
-            features, targets, mask, max_length, _,_,_ = data #change
+            appearance_features, targets, mask, max_length, _,motion_features,_ = data #change
             use_teacher_forcing = True if random.random() < self.teacher_forcing_ratio else False
-            loss = self.train_iter(utils,appearance_features,motion_features,
+            loss,ac_loss = self.train_iter(utils,appearance_features,motion_features,
                                    targets,mask,max_length,use_teacher_forcing)
             print_loss += loss
+            print_ac_loss += ac_loss
             total_loss += loss
+            total_ac_loss += ac_loss
+            
         # Print progress
             if iteration % self.print_every == 0:
                 print_loss_avg = print_loss / self.print_every
-                print("Iteration: {}; Percent complete: {:.1f}%; Average loss: {:.4f}".
-                format(iteration, iteration / len(dataloader) * 100, print_loss_avg))
+                print_ac_loss_avg = print_ac_loss/self.print_every
+                print("Iteration: {}; Percent complete: {:.1f}%; Average loss: {:.4f};AC loss: {:.4f}".
+                format(iteration, iteration / len(dataloader) * 100, print_loss_avg,print_ac_loss_avg))
                 print_loss = 0
+                print_ac_loss = 0
              
             
             iteration += 1 
-        return total_loss/len(dataloader)
+        return total_loss/len(dataloader),total_ac_loss/len(dataloader)
         
         
     def train_iter(self,utils,input_variable,motion_variable,target_variable,
@@ -326,6 +361,8 @@ class MARN(nn.Module):
         self.dec_optimizer.zero_grad()
         
         loss = 0
+        ac_loss = 0
+        total_loss = 0
         print_losses = []
         n_totals = 0
         
@@ -333,6 +370,8 @@ class MARN(nn.Module):
         motion_variable = motion_variable.to(self.device)
         
         input_variable,motion_variable = self.encoder(input_variable,motion_variable)  
+        #print('input variable shape :',input_variable.size())
+        #print('motion variable shape :',motion_variable.size())
         target_variable = target_variable.to(self.device)
         mask = mask.byte().to(self.device)
         
@@ -348,30 +387,44 @@ class MARN(nn.Module):
         # Forward batch of sequences through decoder one time step at a time
         if use_teacher_forcing:
             for t in range(max_target_len):
-                decoder_output, decoder_hidden,attn_weight = self.decoder(decoder_input, decoder_hidden,
+                hidden_last = decoder_hidden
+                decoder_output, decoder_hidden,attn_weight,ct,et = self.decoder(decoder_input, decoder_hidden,
                                                 input_variable.float(),motion_variable.float())
                 # Teacher forcing: next input comes from ground truth(data distribution)
                 decoder_input = target_variable[t].view(1, -1)
+                #Run Attended memory decoder and return Pm(wk)
+                if self.opt_memory_decoder:
+                    mem_out = self.memory_decoder(ct,et,hidden_last,self.memory) #(B,V)
+                    decoder_output = (1-self.cfg.lamb)*decoder_output + self.cfg.lamb*mem_out
+                    
+                # decoder_output : (100,voc.num_words); target_variable[t] : (100); mask[t] : (100)
                 mask_loss, nTotal = utils.maskNLLLoss(decoder_output.unsqueeze(0), target_variable[t], mask[t],self.device)
                 loss += mask_loss
                 print_losses.append(mask_loss.item() * nTotal)
                 n_totals += nTotal
         else:
             for t in range(max_target_len):
-                decoder_output, decoder_hidden,attn_weight = self.decoder(decoder_input,
+                decoder_output, decoder_hidden,attn_weight,ct,et = self.decoder(decoder_input,
                                             decoder_hidden,input_variable.float(),motion_variable.float())
                 # No teacher forcing: next input is decoder's own current output(model distribution)
                 _, topi = decoder_output.squeeze(0).topk(1)
                 decoder_input = torch.LongTensor([[topi[i][0] for i in range(self.cfg.batch_size)]])
                 decoder_input = decoder_input.to(self.device)
+                
+                if self.opt_memory_decoder:
+                    mem_out = self.memory_decoder(ct,et,hidden_last,self.memory) #(B,V)
+                    decoder_output = (1-self.cfg.lamb)*decoder_output + self.cfg.lamb*mem_out
+                
                 # Calculate and accumulate loss
                 mask_loss, nTotal = utils.maskNLLLoss(decoder_output, target_variable[t], mask[t],self.device)
                 loss += mask_loss
                 print_losses.append(mask_loss.item() * nTotal)
                 n_totals += nTotal
 
+        ac_loss = self._calculate_AC_loss(attn_weight)
+        total_loss = self.cfg.acl_weight*ac_loss+loss
         # Perform backpropatation
-        loss.backward()
+        total_loss.backward()
 
         
         _ = nn.utils.clip_grad_norm_(self.encoder.parameters(), self.clip)
@@ -381,7 +434,7 @@ class MARN(nn.Module):
         self.dec_optimizer.step()
         
         
-        return sum(print_losses) / n_totals
+        return sum(print_losses) / n_totals, ac_loss.item()
     
     def _calculate_AC_loss(self,alphas):
         '''
@@ -415,7 +468,7 @@ class MARN(nn.Module):
         vid_list = self.word2vid[word]
         for vid in vid_list:
             apr,mtn = self.encoder(torch.tensor(data_handler.appearance_feature_dict[vid]).to(self.device),
-                         torch.tensor(data_handler.appearance_feature_dict[vid]).to(self.device))
+                         torch.tensor(data_handler.motion_feature_dict[vid]).to(self.device)) #wrong
             appearance_list.append(apr.mean(dim=0))
             motion_list.append(mtn.mean(dim=0))
         if len(vid_list) == 0:
@@ -461,8 +514,14 @@ class MARN(nn.Module):
         caption = []
         attention_values = []
         for _ in range(max_length):
-            decoder_output, decoder_hidden,attn_values = self.decoder(decoder_input, 
+            decoder_output, decoder_hidden,attn_values,et,ct = self.decoder(decoder_input, 
                                                     decoder_hidden,features.float(),motion_features.float())
+            
+            
+            if self.opt_memory_decoder:
+                mem_out = self.memory_decoder(ct,et,hidden_last,self.memory) #(B,V)
+                decoder_output = (1-self.cfg.lamb)*decoder_output + self.cfg.lamb*mem_out
+            
             _, topi = decoder_output.squeeze(0).topk(1)
             decoder_input = torch.LongTensor([[topi[i][0] for i in range(batch_size)]]).to(self.device)
             caption.append(topi.squeeze(1).cpu())
@@ -514,7 +573,7 @@ class MARN(nn.Module):
             next_output_list = [ [] for _ in range(batch_size) ]
             assert len(input_list) == len(hidden_list) == len(cum_prob_list)
             for i, (input, hidden, cum_prob) in enumerate(zip(input_list, hidden_list, cum_prob_list)):
-                output, next_hidden, _ = self.decoder(input, hidden, feats,motion_feats) # need to check
+                output, next_hidden, _,_,_ = self.decoder(input, hidden, feats,motion_feats) # need to check
 
                 caption_list = [ output_list[b][i] for b in range(batch_size)]
                 EOS_mask = [ 0. if EOS_idx in [ idx.item() for idx in caption ] else 1. for caption in caption_list ]
