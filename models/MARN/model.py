@@ -13,7 +13,6 @@ Notations : B : Batch_size, T : Frame dimension, F : dimension of pre-trained CN
 
 '''
 
-
 import torch
 import torch.nn as nn
 from torch import optim
@@ -201,18 +200,18 @@ class AttendedMemoryDecoder(nn.Module):
             ei : word context from memory for current word. (B,E)
             ht : Last hidden memory of decoder LSTM. (B,h)
             
-        
         '''
         
         ei,gi = self._create_memory_representation(memory)
         
-        memory_word_embd = self.memory_word_embed_projection(ei)
-        memory_visual = self.memory_visual_context_projection(gi)
+        memory_word_embd = self.memory_word_embed_projection(ei) # (100,V,b)
+        memory_visual = self.memory_visual_context_projection(gi)# (100,V,b)
+        vlen = memory_visual.size()[1]
         
         
-        decoder_visual = self.decoder_visual_context_projection(ct).unsqueeze(1).expand_as(memory_visual)
-        decoder_word_embd = self.decoder_word_embed_projection(et).unsqueeze(1).expand_as(memory_word_embd)
-        decoder_hidden = self.decoder_hidden_projection(ht).unsqueeze(1).expand_as(memory_visual)
+        decoder_visual = self.decoder_visual_context_projection(ct).permute(1,0,2).expand_as(memory_visual)
+        decoder_word_embd = self.decoder_word_embed_projection(et).permute(1,0,2).expand_as(memory_word_embd)
+        decoder_hidden = self.decoder_hidden_projection(ht).permute(1,0,2).expand_as(memory_visual)
         
         out = torch.tanh(decoder_visual+memory_visual+decoder_word_embd+memory_word_embd+decoder_hidden) 
         output = self.output(out).squeeze(2) #(B,V,1) -> (B,V)
@@ -221,12 +220,15 @@ class AttendedMemoryDecoder(nn.Module):
     
     def _create_memory_representation(self,memory):
         ei, gi = [],[]
-        for i in range(len(self.voc)):
-            word = self.voc.id2word[i]
+        for i in range(4):
+            ei.append(torch.zeros(1,1,self.cfg.embedding_size).to(self.cfg.device))
+            gi.append(torch.zeros(self.cfg.feat_size).to(self.cfg.device))
+        for i in range(4,len(self.voc.word2index)):
+            word = self.voc.index2word[i]
             (g,e) = memory[word]
-            ei.append(e)
-            gi.append(g)
-        ei = torch.stack(ei,0)
+            ei.append(e.to(self.cfg.device))
+            gi.append(g.to(self.cfg.device))
+        ei = torch.stack(ei,0).squeeze(1).squeeze(1)
         gi = torch.stack(gi,0)
         ei = ei.repeat(self.cfg.batch_size,1,1)
         gi = gi.repeat(self.cfg.batch_size,1,1)
@@ -394,7 +396,9 @@ class MARN(nn.Module):
                 decoder_input = target_variable[t].view(1, -1)
                 #Run Attended memory decoder and return Pm(wk)
                 if self.opt_memory_decoder:
-                    mem_out = self.memory_decoder(ct,et,hidden_last,self.memory) #(B,V)
+                    if self.cfg.decoder_type == 'lstm':
+                        hidden_last = hidden_last[0]
+                    mem_out = self.memory_decoder(ct,et,hidden_last,self.word_memory) #(B,V)
                     decoder_output = (1-self.cfg.lamb)*decoder_output + self.cfg.lamb*mem_out
                     
                 # decoder_output : (100,voc.num_words); target_variable[t] : (100); mask[t] : (100)
@@ -412,7 +416,9 @@ class MARN(nn.Module):
                 decoder_input = decoder_input.to(self.device)
                 
                 if self.opt_memory_decoder:
-                    mem_out = self.memory_decoder(ct,et,hidden_last,self.memory) #(B,V)
+                    if self.cfg.decoder_type == 'lstm':
+                        hidden_last = hidden_last[0]
+                    mem_out = self.memory_decoder(ct,et,hidden_last,self.word_memory) #(B,V)
                     decoder_output = (1-self.cfg.lamb)*decoder_output + self.cfg.lamb*mem_out
                 
                 # Calculate and accumulate loss
@@ -467,8 +473,8 @@ class MARN(nn.Module):
         motion_list = []
         vid_list = self.word2vid[word]
         for vid in vid_list:
-            apr,mtn = self.encoder(torch.tensor(data_handler.appearance_feature_dict[vid]).to(self.device),
-                         torch.tensor(data_handler.motion_feature_dict[vid]).to(self.device)) #wrong
+            apr,mtn = self.encoder(torch.tensor(data_handler.appearance_feature_dict[vid]).float().to(self.device),
+                         torch.tensor(data_handler.motion_feature_dict[vid]).float().to(self.device)) #wrong
             appearance_list.append(apr.mean(dim=0))
             motion_list.append(mtn.mean(dim=0))
         if len(vid_list) == 0:
@@ -482,7 +488,7 @@ class MARN(nn.Module):
     
     def _generate_word_embedding(self,word):
         word = torch.tensor([[self.voc.word2index[word]]])
-        word_feat = self.decoder.embedding(word.to(self.device)).detach()
+        word_feat = self.decoder.embedding(word.to(self.device)).detach().cpu()
         return word_feat
         
     def _generate_auxiliary_features(self):
