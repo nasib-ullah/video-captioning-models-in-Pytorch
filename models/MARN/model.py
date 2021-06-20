@@ -4,7 +4,7 @@ Module :  MARN model
 Authors:  Nasibullah (nasibullah104@gmail.com)
 Details : Implementation of the paper Memory Attended Recurrent Network for Video captioning.
           This implementation differ from original paper in 2 aspects.
-          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean pooling has been done over frame 
+          (1) During calculation of visual context information for memory, the attentions weights are not considered. mean pooling has been done over frame
           features. Its not clear in the paper how to use attention values without propagating signal through the decoder.
           (2) Didn't consider the auxiliary features
           
@@ -184,8 +184,8 @@ class AttendedMemoryDecoder(nn.Module):
         self.decoder_hidden_projection = nn.Linear(cfg.decoder_hidden_size,cfg.amd_bottleneck_size)
         self.decoder_word_embed_projection = nn.Linear(cfg.embedding_size,cfg.amd_bottleneck_size)
         
-        self.memory_visual_context_projection = nn.Linear(cfg.feat_size,cfg.amd_bottleneck_size)
-        self.memory_word_embed_projection = nn.Linear(cfg.embedding_size,cfg.amd_bottleneck_size)
+        self.memory_visual_context_projection = nn.Linear(cfg.topk,cfg.amd_bottleneck_size)
+        self.memory_word_embed_projection = nn.Linear(cfg.topk,cfg.amd_bottleneck_size)
         
         self.output = nn.Linear(cfg.amd_bottleneck_size,1)
         
@@ -202,7 +202,11 @@ class AttendedMemoryDecoder(nn.Module):
             
         '''
         
+        batch_size = ht.size()[1]
         ei,gi = self._create_memory_representation(memory)
+        
+        ei = ei.repeat(batch_size,1,1)
+        gi = gi.repeat(batch_size,1,1)
         
         memory_word_embd = self.memory_word_embed_projection(ei) # (100,V,b)
         memory_visual = self.memory_visual_context_projection(gi)# (100,V,b)
@@ -221,8 +225,8 @@ class AttendedMemoryDecoder(nn.Module):
     def _create_memory_representation(self,memory):
         ei, gi = [],[]
         for i in range(4):
-            ei.append(torch.zeros(1,1,self.cfg.embedding_size).to(self.cfg.device))
-            gi.append(torch.zeros(self.cfg.feat_size).to(self.cfg.device))
+            ei.append(torch.zeros(1,1,self.cfg.topk).to(self.cfg.device))
+            gi.append(torch.zeros(self.cfg.topk).to(self.cfg.device))
         for i in range(4,len(self.voc.word2index)):
             word = self.voc.index2word[i]
             (g,e) = memory[word]
@@ -230,8 +234,6 @@ class AttendedMemoryDecoder(nn.Module):
             gi.append(g.to(self.cfg.device))
         ei = torch.stack(ei,0).squeeze(1).squeeze(1)
         gi = torch.stack(gi,0)
-        ei = ei.repeat(self.cfg.batch_size,1,1)
-        gi = gi.repeat(self.cfg.batch_size,1,1)
         return ei,gi
         
         
@@ -484,7 +486,7 @@ class MARN(nn.Module):
         motion_tensor = torch.stack(motion_list).mean(dim=0)
         
         gr = appearance_tensor + motion_tensor
-        return gr.detach()
+        return gr.detach().cpu()
     
     def _generate_word_embedding(self,word):
         word = torch.tensor([[self.voc.word2index[word]]])
@@ -497,8 +499,8 @@ class MARN(nn.Module):
     def generate_memory(self,data_handler):
         self._generate_word2videos(data_handler)
         for word in self.word_list:
-            er = self._generate_word_embedding(word)
-            gr = self._generate_visual_context_vector(word,data_handler)
+            er,_ = self._generate_word_embedding(word).topk(self.cfg.topk)
+            gr,_ = self._generate_visual_context_vector(word,data_handler).topk(self.cfg.topk)
             #auxiliary_feat = self._generate_auxiliary_features(word)
             self.word_memory[word] = (gr,er)
         
@@ -520,12 +522,15 @@ class MARN(nn.Module):
         caption = []
         attention_values = []
         for _ in range(max_length):
-            decoder_output, decoder_hidden,attn_values,et,ct = self.decoder(decoder_input, 
+            hidden_last = decoder_hidden
+            decoder_output, decoder_hidden,attn_values,ct,et = self.decoder(decoder_input, 
                                                     decoder_hidden,features.float(),motion_features.float())
             
             
             if self.opt_memory_decoder:
-                mem_out = self.memory_decoder(ct,et,hidden_last,self.memory) #(B,V)
+                if self.cfg.decoder_type == 'lstm':
+                    hidden_last = hidden_last[0]
+                mem_out = self.memory_decoder(ct,et,hidden_last,self.word_memory) #(B,V)
                 decoder_output = (1-self.cfg.lamb)*decoder_output + self.cfg.lamb*mem_out
             
             _, topi = decoder_output.squeeze(0).topk(1)
