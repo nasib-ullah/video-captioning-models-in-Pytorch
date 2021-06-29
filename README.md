@@ -103,6 +103,5 @@ Wenjie Pei, Jiyuan Zhang, Xiangrong Wang, Lei Ke, Xiaoyong Shen, and Yu-Wing Tai
 
 ## Acknowlegement
 
-I got some of the coding ideas and the extracted video features from
-[hobincar/pytorch-video-feature-extractor](https://github.com/hobincar/pytorch-video-feature-extractor)
-Many thanks!
+I got some of the coding ideas from
+[hobincar/pytorch-video-feature-extractor](https://github.com/hobincar/pytorch-video-feature-extractor). For pre-trained appearance feature extraction I have followed [this repo](https://github.com/Cadene/pretrained-models.pytorch) and [this repo](https://github.com/kenshohara/video-classification-3d-cnn-pytorch) for 3D motion feature extraction. Many thanks!
