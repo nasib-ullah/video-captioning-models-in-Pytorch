@@ -1,4 +1,3 @@
-
 '''
 Module :  MARN model
 Authors:  Nasibullah (nasibullah104@gmail.com)
@@ -658,4 +657,3 @@ class MARN(nn.Module):
         
         
         return caps_text
-
