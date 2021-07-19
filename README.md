@@ -40,6 +40,7 @@ $ source .env/bin/activate
    | MSVD | Appearance | [link](https://www.dropbox.com/s/m8llhpvxpzge5jj/MSVD_APPEARANCE_INCEPTIONV4_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/1podxw82gl1pavg/MSVD_APPEARANCE_INCEPTIONRESNETV2_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/34ay6if4j2gfcgz/MSVD_APPEARANCE_RESNET101_28.hdf5?dl=0) | - |
    | MSR-VTT | Appearance | [link](https://www.dropbox.com/s/13k4rruu84a42va/MSRVTT_APPEARANCE_INCEPTIONV4_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/j15hkyw4sy59cxp/MSRVTT_APPEARANCE_INCEPTIONRESNETV2_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/yfwjps6cs0y8drm/MSRVTT_APPEARANCE_RESNET101_28.hdf5?dl=0) | - |
    | MSVD | Motion | - | - | - | [link](https://www.dropbox.com/s/1m7leypc6xgmb35/MSVD_MOTION_RESNEXT101.hdf5?dl=0) |
+   | MSR-VTT | Motion | - | - | - | [link](https://www.dropbox.com/s/uxhflfyu7ngimvy/MSRVTT_MOTION_RESNEXT.hdf5?dl=0) |
 
 You can change hyperparameters by modifying `config.py`.
 
