@@ -1,5 +1,5 @@
 # Video captioning models in Pytorch (Work in progress)
-This repository contains Pytorch implementation of video captioning SOTA models from 2015-2019 on MSVD and MSRVTT datasets. Details are given in below table
+This repository contains Pytorch implementation of video captioning SOTA models from 2015-2020 on MSVD and MSRVTT datasets. Details are given in below table
 
  | Model | Datasets | Paper name | Year | Status | Remarks |
  | :---: | :---: | :---: | :---: |  :---: | :---: |
@@ -8,6 +8,7 @@ This repository contains Pytorch implementation of video captioning SOTA models 
  | SA-LSTM | MSVD, MSRVTT | Describing videos by exploiting temporal structure[[3]](#3) | 2015 | Implemented | Good Baseline with attention | 
  | Recnet | MSVD, MSRVTT |  Reconstruction Network for Video Captioning[[4]](#4)  | 2018 | Implemented | Results did not improve over SA-LSTM with both global and local reconstruction loss |
  | MARN | MSVD, MSRVTT | Memory-Attended Recurrent Network for Video Captioning[[5]](#5) | 2019 | Implemented | Memory requirement linearly increases with vocabulary size |
+ | ORG-TRL| MSVD, MSRVTT | Object Relational Graph with Teacher-Recommended Learning for Video Captioning[[6]](#6) | 2020 | In progress | leavarage GCN for object relational features |
  
  *More recent models will be added in future
 
@@ -101,6 +102,9 @@ Wang, Bairui, et al. "Reconstruction Network for Video Captioning." Proceedings 
 
 <a id = "5">[5]</a>
 Wenjie Pei, Jiyuan Zhang, Xiangrong Wang, Lei Ke, Xiaoyong Shen, and Yu-Wing Tai. Memory-attended recurrent network for video captioning. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pages 8347–8356, 2019
+
+<a id = "6">[6]</a>
+Ziqi Zhang, Yaya Shi, Chunfeng Yuan, Bing Li, Peijin Wang, Weiming Hu, Zhengjun Zha. Object Relational Graph with Teacher-Recommended Learning for Video Captioning. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2020.
 
 ## Acknowlegement
 
