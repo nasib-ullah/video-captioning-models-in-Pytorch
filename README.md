@@ -73,7 +73,7 @@ Follow the demo given in `video_captioning.ipynb`.
  | S2VT | Inceptionv4 | - | - | - | - | - |
  | RecNet (global ) | Inceptionv4 | - | - | - | - | - |
  | RecNet (local) | Inceptionv4 | -| - | - | - | - |
- | MARN | Inceptionv4, REsNext-101 | - | - | - | - | - |
+ | MARN | Inceptionv4, REsNext-101 | 48.5 | 34.4 | 71.4 | 86.4 | [link](/home/nasibullah/Dropbox/Anaconda_Workspace/CodeSpace/Vision and Language/Video Captioning/Github/marn_msvd.pt) |
  |ORG-TRL| InceptionResNetV2, REsNext-101 | - | - | - | - | 
  
  *MSRVTT
