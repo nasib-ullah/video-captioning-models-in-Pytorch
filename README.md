@@ -42,6 +42,8 @@ $ source .env/bin/activate
    | MSR-VTT | Appearance | [link](https://www.dropbox.com/s/13k4rruu84a42va/MSRVTT_APPEARANCE_INCEPTIONV4_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/j15hkyw4sy59cxp/MSRVTT_APPEARANCE_INCEPTIONRESNETV2_28.hdf5?dl=0) | [link](https://www.dropbox.com/s/yfwjps6cs0y8drm/MSRVTT_APPEARANCE_RESNET101_28.hdf5?dl=0) | - |
    | MSVD | Motion | - | - | - | [link](https://www.dropbox.com/s/1m7leypc6xgmb35/MSVD_MOTION_RESNEXT101.hdf5?dl=0) |
    | MSR-VTT | Motion | - | - | - | [link](https://www.dropbox.com/s/uxhflfyu7ngimvy/MSRVTT_MOTION_RESNEXT.hdf5?dl=0) |
+   | MSVD | Object | - | - | [link](https://www.dropbox.com/s/5ro7mjqfs0kgb7r/MSVD_OBJECT_FASTERRCNN_R101FC2_28.hdf5?dl=0) | - |
+   | MSRVTT | Object | - | - | [link](https://www.dropbox.com/s/xtticyqn5tphgoq/MSRVTT_OBJECT_FASTERRCNN_R101FC2_28.hdf5?dl=0) | - |
 
 You can change hyperparameters by modifying `config.py`.
 
@@ -71,7 +73,8 @@ Follow the demo given in `video_captioning.ipynb`.
  | S2VT | Inceptionv4 | - | - | - | - | - |
  | RecNet (global ) | Inceptionv4 | - | - | - | - | - |
  | RecNet (local) | Inceptionv4 | -| - | - | - | - |
- | MARN | Inceptionv4 | - | - | - | - | - |
+ | MARN | Inceptionv4, REsNext-101 | - | - | - | - | - |
+ |ORG-TRL| InceptionResNetV2, REsNext-101 | - | - | - | - | 
  
  *MSRVTT
  
@@ -83,6 +86,7 @@ Follow the demo given in `video_captioning.ipynb`.
  | RecNet (global ) | Inceptionv4 | - | - | - | - | - |
  | RecNet (local) | Inceptionv4 | -| - | - | - | - |
  | MARN | Inceptionv4 | - | - | - | - | - |
+ |ORG-TRL| InceptionResNetV2, REsNext-101 | - | - | - | - | 
 
 # References
 <a id="1">[1]</a>
