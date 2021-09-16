@@ -68,8 +68,8 @@ Follow the demo given in `video_captioning.ipynb`.
 *MSVD
  | Model | Pretrained model | BLEU4 | METEOR | ROUGE_L | CIDER | Pretrained |
  | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
- | Mean Pooling | Inceptionv4 | 42.2 | 31.6 | 68.2 | 69.7 | [link](https://drive.google.com/file/d/1Oj5yMIKnU5obe0UXTknvX9S70CFVH7nz/view?usp=sharing) |
- | SA-LSTM | InceptionvResNetV2 | 45.5 | 32.5 | 69.0 | 78.0 | [link](https://www.dropbox.com/s/bs6mepcv8oucnfb/sa_lstm_msvd.pt?dl=0) |
+ | Mean Pooling | Inceptionv4 | 42.4 | 31.6 | 68.3 | 71.8 | [link](https://www.dropbox.com/s/y4d6qe0azjzfdaj/mp_lstm_msvd.pt?dl=0) |
+ | SA-LSTM | InceptionvResNetV2 | 45.5 | 32.5 | 69.0 | 78.0 | [link](https://www.dropbox.com/s/cx2hnbmfkvjs6bk/sa_lstm_msvd.pt?dl=0) |
  | S2VT | Inceptionv4 | - | - | - | - | - |
  | RecNet (global ) | Inceptionv4 | - | - | - | - | - |
  | RecNet (local) | Inceptionv4 | -| - | - | - | - |
