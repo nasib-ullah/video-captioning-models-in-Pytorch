@@ -26,7 +26,7 @@ import os
 import copy
     
     
-    
+     
 class Encoder(nn.Module):
     
     def __init__(self,cfg):
