@@ -364,6 +364,9 @@ class SALSTM(nn.Module):
         rfunc = np.vectorize(lambda t: '' if t == 'EOS' else t) # to transform EOS to null string
         lfunc = np.vectorize(lambda t: '' if t == 'SOS' else t) # to transform SOS to null string
         pfunc = np.vectorize(lambda t: '' if t == 'PAD' else t) # to transform PAD to null string
+        
+        if self.cfg.opt_encoder:
+            feats = self.encoder(feats) 
 
         hidden = torch.zeros(self.cfg.n_layers, batch_size, self.cfg.decoder_hidden_size).to(self.device)
         if self.cfg.decoder_type == 'lstm':
@@ -461,71 +464,4 @@ class SALSTM(nn.Module):
         
         return caps_text
     
-    @torch.no_grad()
-    def BeamDecoding_Beta(self,features,motion_feat=None,object_feat=None,beam_length=3, max_length=15,return_single=True):
-        '''
-        Beam decoding for Mean Pooling
-        '''
-        batch_size = features.size()[0]
-        features = features.to(self.device)
-        if self.cfg.opt_encoder:
-            features = self.encoder(features) 
-
-        vfunc = np.vectorize(lambda t: self.voc.index2word[t]) # to transform tensors to words
-        rfunc = np.vectorize(lambda t: '' if t == 'EOS' else t) # to transform EOS to null string
-        
-        final_captions = torch.ones(beam_length,batch_size,max_length)
-        final_scores = torch.tensor([[0]*beam_length for i in range(batch_size)])
-        final_attn_scores = torch.zeros(beam_length,max_length,batch_size,self.cfg.attn_size)
-        #encoder_output = self.encoder(features).unsqueeze_(0) # shape (1,10,256)
-        
-        decoder_input = final_captions[:,:,0].unsqueeze_(1).long().to(self.device) # (
-        decoder_hidden = torch.zeros(beam_length,self.cfg.n_layers, batch_size, self.cfg.decoder_hidden_size).to(self.device)
-        
-        if self.cfg.decoder_type == 'lstm':
-            decoder_hidden = (decoder_hidden,decoder_hidden)
-        for l in range(max_length):
-            beam_output = []
-            tmp_scores = copy.deepcopy(final_scores)
-            for i in range(beam_length):
-                #split data along the beam dimension and concatenate results
-                if self.cfg.decoder_type == 'lstm':
-                    decoder_output, (decoder_hidden[0][i],decoder_hidden[1][i]),attn_scores = self.decoder(decoder_input[i],
-                                                                (decoder_hidden[0][i],decoder_hidden[1][i]),features.float())
-                else:
-                    decoder_output,decoder_hidden[i],attn_scores = self.decoder(decoder_input[i],
-                                                                                         decoder_hidden[i],features.float())
-                    
-                # add log prob (need to verify this addition)
-                tmp = np.log(decoder_output.squeeze(0).cpu().numpy()) + tmp_scores[:,i].view(batch_size,1).cpu().numpy() 
-                beam_output.append(tmp)
-                
-            beam_output = np.concatenate(beam_output,1) #maybe another normalization on topof it
-            beam_output = F.softmax(torch.tensor(beam_output), dim = 1)
-            value,index = torch.tensor(beam_output).topk(beam_length)
-            final_scores = copy.deepcopy(value)
-            prefinal_caption = copy.deepcopy(final_captions)
-            for ii,ind in enumerate(index.permute(1,0),0): # need to loop over batches
-                for b in range(len(ind)):  
-                    kk = int(ind[b].item()/self.voc.num_words)
-                    prefinal_caption[ii,b,:(l+1)] = torch.cat([final_captions[kk,b,:l].view(-1),ind[b].float().view(-1)])
-                
-            final_captions = prefinal_caption
-            index = index % self.voc.num_words # is it correct 
-            #print(index)
-            decoder_input = index.unsqueeze_(1).permute(2,1,0).to(self.device) # shape
-        final_captions = final_captions % self.voc.num_words
-        caps_text = []
-        captions = vfunc(final_captions.cpu().numpy())
-        captions = rfunc(captions)
-        if return_single:
-            for eee in captions[0]:
-                caps_text.append(' '.join(x for x in eee).strip())
-        else:
-            for eee in captions:
-                for jj in eee:
-                    caps_text.append(' '.join(x for x in jj).strip())
-        
-        return final_captions,caps_text,final_scores
-    
-    
+   
