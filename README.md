@@ -1,4 +1,6 @@
 # Video captioning models in Pytorch (Work in progress)
+[![DOI](https://zenodo.org/badge/333657270.svg)](https://zenodo.org/badge/latestdoi/333657270)
+
 This repository contains Pytorch implementation of video captioning SOTA models from 2015-2020 on MSVD and MSRVTT datasets. Details are given in below table
 
  | Model | Datasets | Paper name | Year | Status | Remarks |
